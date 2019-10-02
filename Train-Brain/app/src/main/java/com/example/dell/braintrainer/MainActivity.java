@@ -17,18 +17,27 @@ public class MainActivity extends AppCompatActivity {
     Random rand = new Random();
     int v1, v2 ,rightAnswer=0 , userAnswer=0, tQuestions=0;
     boolean star=true;
+
+    long remainingTimeMillis = -1;
+
     public void nextQuestion(){
-    final TextView ques = (TextView)findViewById(R.id.ques);
         int a = rand.nextInt(50);
         int b=rand.nextInt(50);
         v1=a;   v2=b;
         rightAnswer = v1 + v2;
-        ques.setText(Integer.toString(v1)+" + "+Integer.toString(v2)+" = ?");
         userAnswer=0;
-
+        updateText();
     }
+
+    public void updateText() {
+        TextView ques = findViewById(R.id.ques);
+        ques.setText(v1 + " + " + v2 +" = "+ (userAnswer == 0 ? "?" : userAnswer));
+
+        TextView score = findViewById(R.id.score);
+        score.setText(Integer.toString(tQuestions));
+    }
+
     public void buttonPressed(View view){
-        TextView ques = (TextView)findViewById(R.id.ques);
         int t=0;
         int id=view.getId();
         if(id == R.id.b1) t=1;
@@ -42,60 +51,96 @@ public class MainActivity extends AppCompatActivity {
         if(id == R.id.b9) t=9;
         if(id == R.id.b0) t=0;
         userAnswer=userAnswer*10 + t;
-        ques.setText(Integer.toString(v1)+" + "+Integer.toString(v2)+" = "+ Integer.toString(userAnswer));
         if(userAnswer==rightAnswer){
             nextQuestion();
             tQuestions++;
-            TextView score = (TextView)findViewById(R.id.score);
-            score.setText(Integer.toString(tQuestions));
         }
+        updateText();
     }
 
     public void backspace(View view){
-        TextView ques = (TextView)findViewById(R.id.ques);
         userAnswer/=10;
-        if(userAnswer==0)
-            ques.setText(Integer.toString(v1)+" + "+Integer.toString(v2)+" = ?");
+        updateText();
     }
 
     public void replay(View view){
-        userAnswer=0;
-        tQuestions=0;
-
         final TextView timer = (TextView)findViewById(R.id.timer);
         LinearLayout replayScreen = (LinearLayout)findViewById(R.id.replayScreen);
         replayScreen.setVisibility(View.INVISIBLE);
 
-        new CountDownTimer(30000, 1000){
+        if (remainingTimeMillis <= 0) {
+            userAnswer=0;
+            tQuestions=0;
+            remainingTimeMillis = 30000;// Default playtime is 30 seconds
+        }
+
+        new CountDownTimer(remainingTimeMillis, 1000){
             @Override
             public void onTick(long millisUntilFinished) {
-            timer.setText(Integer.toString((int)millisUntilFinished/1000));
-            if(star==true) {
+                remainingTimeMillis = millisUntilFinished;
 
-                nextQuestion();
-                star=false;
+                timer.setText(Integer.toString((int)millisUntilFinished/1000));
+                if(star==true) {
+
+                    nextQuestion();
+                    star=false;
+                }
             }
-        }
             @Override
             public void onFinish() {
-                TextView fScore = (TextView)findViewById(R.id.fScore);
-                fScore.setText(Integer.toString(tQuestions));
-                LinearLayout replayScreen = (LinearLayout)findViewById(R.id.replayScreen);
-                replayScreen.setVisibility(View.VISIBLE);
-                TextView score = (TextView)findViewById(R.id.score);
-                score.setText(Integer.toString(0));
+                remainingTimeMillis = -1;
 
+                onGameEnd();
             }
         }.start();
     }
+
+    public void onGameEnd() {
+        TextView fScore = (TextView)findViewById(R.id.fScore);
+        fScore.setText(Integer.toString(tQuestions));
+        LinearLayout replayScreen = (LinearLayout)findViewById(R.id.replayScreen);
+        replayScreen.setVisibility(View.VISIBLE);
+        TextView score = (TextView)findViewById(R.id.score);
+        score.setText(Integer.toString(0));
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        TextView score = (TextView)findViewById(R.id.score);
-        score.setText(Integer.toString(0));
+        TextView score = (TextView) findViewById(R.id.score);
 
-        replay(score);
+        if (savedInstanceState == null) {
+            score.setText(Integer.toString(0));
+
+            replay(score);
+        } else {
+            v1 = savedInstanceState.getInt("v1");
+            v2 = savedInstanceState.getInt("v2");
+            star = savedInstanceState.getBoolean("star");
+            rightAnswer = savedInstanceState.getInt("rightAnswer");
+            userAnswer = savedInstanceState.getInt("userAnswer");
+            tQuestions = savedInstanceState.getInt("tQuestion");
+            remainingTimeMillis = savedInstanceState.getLong("remainingTimeMillis");
+
+            if (remainingTimeMillis > 0) {
+                replay(score);
+            } else {
+                onGameEnd();
+            }
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle bundle) {
+        super.onSaveInstanceState(bundle);
+
+        bundle.putInt("v1", v1);
+        bundle.putInt("v2", v2);
+        bundle.putInt("rightAnswer", rightAnswer);
+        bundle.putInt("userAnswer", userAnswer);
+        bundle.putInt("tQuestion", tQuestions);
+        bundle.putLong("remainingTimeMillis", remainingTimeMillis);
     }
 }
